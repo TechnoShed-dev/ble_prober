@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechnoShed BLE Prober</title>
+    <style>
+        body { font-family: sans-serif; background: #222; color: #eee; max-width: 800px; margin: 0 auto; padding: 20px; }
+        
+        /* Flex header to handle long version numbers cleanly */
+        h1 { 
+            border-bottom: 2px solid #00d2ff; 
+            padding-bottom: 10px; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .version-tag {
+            font-size: 0.5em;
+            background: #333;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #00d2ff;
+            vertical-align: middle;
+        }
+
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;}
+        button { background: #00d2ff; color: #000; border: none; padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 4px; }
+        button:disabled { background: #555; cursor: not-allowed; }
+        .btn-dl { background: #ffaa00; } 
+        
+        .device-card { background: #333; margin: 10px 0; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .device-info h3 { margin: 0 0 5px 0; color: #fff; }
+        .device-info p { margin: 0; color: #aaa; font-size: 0.9em; }
+        .results-area { background: #111; padding: 10px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>
+        BLE Prober 
+        <span id="versionTag" class="version-tag">Loading...</span>
+    </h1>
+    
+    <div class="controls">
+        <button id="scanBtn" onclick="runScan()">Start Scan</button>
+        <a href="/download_log" target="_blank">
+            <button class="btn-dl">Download Log</button>
+        </a>
+        <span id="statusText">Ready</span>
+    </div>
+
+    <div id="deviceList"></div>
+
+    <script>
+        const scanBtn = document.getElementById('scanBtn');
+        const statusText = document.getElementById('statusText');
+        const deviceList = document.getElementById('deviceList');
+
+        // Run on page load
+        window.onload = function() {
+            fetchVersion(); // Get the version number
+            syncTime();     // Sync the time
+        };
+
+        async function fetchVersion() {
+            try {
+                const resp = await fetch('/version');
+                if(resp.ok){
+                    const data = await resp.json();
+                    document.getElementById('versionTag').innerText = "v" + data.version;
+                } else {
+                    document.getElementById('versionTag').innerText = "v?.?.?";
+                }
+            } catch (e) {
+                console.log("Could not fetch version");
+                document.getElementById('versionTag').innerText = "v?.?.?";
+            }
+        }
+
+        async function syncTime() {
+            const now = new Date();
+            const payload = {
+                year: now.getFullYear(),
+                month: now.getMonth() + 1,
+                day: now.getDate(),
+                hour: now.getHours(),
+                minute: now.getMinutes(),
+                second: now.getSeconds()
+            };
+            try {
+                await fetch('/set_time', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                console.log("Time synced with Pico.");
+            } catch (e) {
+                console.log("Time sync failed.");
+            }
+        }
+
+        async function runScan() {
+            scanBtn.disabled = true;
+            statusText.innerText = "Scanning (10s)...";
+            deviceList.innerHTML = "";
+
+            try {
+                const resp = await fetch('/scan');
+                if (resp.status !== 200) throw new Error("Scan failed to start");
+
+                statusText.innerText = "Scan Complete. Fetching results...";
+                const resultsResp = await fetch('/results');
+                const devices = await resultsResp.json();
+                renderDevices(devices);
+                statusText.innerText = `Found ${devices.length} devices.`;
+
+            } catch (e) {
+                console.error(e);
+                statusText.innerText = "Error: " + e.message;
+            } finally {
+                scanBtn.disabled = false;
+            }
+        }
+
+        function renderDevices(devices) {
+            deviceList.innerHTML = "";
+            if (devices.length === 0) {
+                deviceList.innerHTML = "<p>No devices found.</p>";
+                return;
+            }
+
+            devices.forEach(dev => {
+                const card = document.createElement('div');
+                card.className = 'device-card';
+                card.innerHTML = `
+                    <div class="device-info">
+                        <h3>${dev.name}</h3>
+                        <p>MAC: ${dev.mac} | RSSI: ${dev.rssi}dBm</p>
+                        <div id="res-${dev.mac.replace(/:/g, '')}" class="results-area"></div>
+                    </div>
+                    <button onclick="probeDevice('${dev.mac}')">Probe</button>
+                `;
+                deviceList.appendChild(card);
+            });
+        }
+
+        async function probeDevice(mac) {
+            const resultDiv = document.getElementById(`res-${mac.replace(/:/g, '')}`);
+            resultDiv.style.display = 'block';
+            resultDiv.innerText = "Probing... please wait...";
+
+            try {
+                const resp = await fetch(`/probe/${mac}`);
+                const data = await resp.json();
+                resultDiv.innerText = JSON.stringify(data, null, 2);
+            } catch (e) {
+                resultDiv.innerText = "Probe Failed: " + e.message;
+            }
+        }
+    </script>
+</body>
+</html>
