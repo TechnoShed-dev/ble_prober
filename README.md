@@ -2,8 +2,8 @@
 
 **A robust, headless Bluetooth Low Energy (BLE) investigation tool for the Raspberry Pi Pico W.**
 
-![BLE Prober Dashboard](https://github.com/TechnoShed-dev/ble_prober/assets/placeholder-image.png)
-*(Replace the link above with your actual screenshot when uploaded to GitHub)*
+![BLE Prober Dashboard](assets/dashboard_screenshot.jpg)
+
 
 ## 📖 Overview
 
