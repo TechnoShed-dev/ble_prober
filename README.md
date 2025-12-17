@@ -30,6 +30,21 @@ It is designed with **robustness** in mind, featuring "Anti-Zombie" logic to han
 * **MicroPython Firmware** (v1.20 or newer recommended)
 * **Thonny IDE** (for uploading files)
 
+## 📟 Extended Hardware (Optional)
+
+You can enhance the "Prober" with a display and sensors to get real-time feedback without needing a phone.
+
+* **1602 LCD (I2C):** Displays current status (Scanning/Connecting), Time, and Temperature.
+* **BME280 Sensor:** Provides environmental data (Temperature/Humidity).
+
+**Wiring:**
+| Device | Pico Pin | Description |
+| :--- | :--- | :--- |
+| **LCD SDA** | GPIO 14 | I2C Data |
+| **LCD SCL** | GPIO 15 | I2C Clock |
+| **Sensor SDA** | GPIO 16 | I2C Data |
+| **Sensor SCL** | GPIO 17 | I2C Clock |
+
 ## 📥 Installation
 
 1.  **Flash MicroPython:** Install the latest MicroPython firmware on your Pico W.
