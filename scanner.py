@@ -28,6 +28,7 @@ import time
 import gc       # <--- Added Garbage Collection
 import config
 import status_led
+import display_task # <--- NEW IMPORT
 
 # --- CONSTANTS & LOOKUPS ---
 
@@ -50,6 +51,7 @@ async def run_scan():
     gc.collect()
     
     status_led.set_state(status_led.SCANNING)
+    display_task.set_status("Scanning...")  # <--- UPDATE LCD
     duration_ms = config.SCAN_DURATION_MS
     print(f"[BLE] Starting Scan for {duration_ms}ms (Threshold: {config.RSSI_THRESHOLD}dBm)...")
     
@@ -92,6 +94,9 @@ async def run_scan():
     finally:
         print(f"[BLE] Scan finished. Found {len(found_devices)} targets.")
         status_led.set_state(status_led.IDLE)
+        display_task.set_status("Scan Complete") # <--- UPDATE LCD
+        await asyncio.sleep(2) # Let user read it
+        display_task.set_status("Ready")
         gc.collect() # Cleanup after scan
 
 def _resolve_uuid(uuid_obj):
@@ -125,6 +130,7 @@ async def probe_device(bdaddr):
     # MEMORY CLEANUP
     gc.collect()
     status_led.set_state(status_led.CONNECTING)
+    display_task.set_status("Probing Dev...") # <--- UPDATE LCD
     
     # Radio Cooldown
     await asyncio.sleep(0.5)

@@ -1,7 +1,7 @@
 """
 -------------------------------------------------------------------------
 File:       main.py
-Version:    1.1.1 (Single Config)
+Version:    1.2.0 (Interface Version)
 Author:     Karl @ TechnoShed
 Date:       December 2025
 Repo:       https://github.com/TechnoShed-dev/ble_prober
@@ -16,7 +16,7 @@ Description:
     4. Starts the Web Server.
 
 Dependencies:
-    - web_server, config, ntptime, network
+    - web_server, config, ntptime, network, I2C_LCD, I2C
 -------------------------------------------------------------------------
 """
 
@@ -24,10 +24,23 @@ import network
 import utime
 import ntptime
 import machine
+from machine import Pin, I2C
 import asyncio
 import web_server
 import config  # <--- Changed from config_credentials
 import status_led
+import display_task
+# import BME280
+# from I2C_LCD import I2CLcd
+
+#i2c_screen=I2C(1,sda=Pin(14),scl=Pin(15),freq=400000) # define screen
+#i2c = I2C(id=0, scl=Pin(17), sda=Pin(16), freq=10000)  # define sensor
+## Initialize BME280 sensor
+#bme = BME280.BME280(i2c=i2c)
+# Initialise Screen
+#lcd=I2CLcd(i2c_screen,63,2,16)
+#lcd.clear()
+#lcd.putstr("Technoshed")
 
 # --- HELPER FUNCTIONS ---
 
@@ -99,20 +112,25 @@ def sync_time_ntp():
 
 if __name__ == "__main__":
     try:
-        # 1. Start the LED Loop immediately
+        # 1. Initialize Hardware (LCD & BME)
+        display_task.init_hardware()
+        display_task.set_status("Booting...")
+
+        # 2. Start Async Loops
         loop = asyncio.get_event_loop()
         loop.create_task(status_led.run_led_loop())
+        loop.create_task(display_task.run_display_loop()) # <--- NEW TASK
 
-        # 2. Run the Smart Sync
-        # Set LED to Connecting while syncing
+        # 3. Smart Sync
         status_led.set_state(status_led.CONNECTING) 
+        display_task.set_status("Syncing Time...") # <--- UPDATE LCD
         sync_time_ntp()
         
         print("-" * 40)
         
-        # 3. Launch Web Server
-        # Set LED to Idle when ready
+        # 4. Launch Web Server
         status_led.set_state(status_led.IDLE)
+        display_task.set_status("Ready: Web Mode") # <--- UPDATE LCD
         web_server.start_server()
         
     except KeyboardInterrupt:
